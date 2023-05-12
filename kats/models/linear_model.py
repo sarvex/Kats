@@ -42,7 +42,6 @@ class LinearModelParams(Params):
         Since the linear model does not require key parameters to be defined this is not required for this class
         """
         logging.info("Method validate_params() is not implemented.")
-        pass
 
 
 class LinearModel(m.Model):

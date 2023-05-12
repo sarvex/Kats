@@ -84,16 +84,16 @@ class WeightedAvgEnsemble(ensemble.BaseEnsemble):
         """
 
         num_process = min(len(BASE_MODELS.keys()), (cpu_count() - 1) // 2)
-        if num_process < 1:
-            num_process = 1
+        num_process = max(num_process, 1)
         pool = Pool(processes=(num_process), maxtasksperchild=1000)
-        backtesters = {}
-        for model in self.params.models:
-            backtesters[model.model_name] = pool.apply_async(
+        backtesters = {
+            model.model_name: pool.apply_async(
                 self._backtester_single,
                 args=(model.model_params, BASE_MODELS[model.model_name.lower()]),
                 kwds={"err_method": err_method},
             )
+            for model in self.params.models
+        }
         pool.close()
         pool.join()
         # pyre-fixme[16]: `WeightedAvgEnsemble` has no attribute `errors`.

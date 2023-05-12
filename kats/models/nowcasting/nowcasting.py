@@ -106,10 +106,10 @@ class NowcastingModel(m.Model):
 
         for n in [10, 15, 20, 25, 30]:
             self.df = ROC(self.df, n)
-            feature_names.append("ROC_" + str(n))
+            feature_names.append(f"ROC_{str(n)}")
         for n in [10, 15, 20, 25, 30]:
             self.df = LAG(self.df, n)
-            feature_names.append("LAG_" + str(n))
+            feature_names.append(f"LAG_{str(n)}")
         self.df = self.df[~self.df.isin([np.nan, np.inf, -np.inf]).any(1)]  # filterout + - inf, nan
         self.feature_names = feature_names
 
@@ -117,7 +117,7 @@ class NowcastingModel(m.Model):
         """Extracts labels from time seires data."""
 
         self.df["label"] = LAG(self.data.to_dataframe(), -self.step)[
-            "LAG_-" + str(self.step)
+            f"LAG_-{str(self.step)}"
         ]
 
     ###################### module 1: for offline training ######################
@@ -167,13 +167,12 @@ class NowcastingModel(m.Model):
         )
         if model:
             self.model = model
-        if df is not None:
-            if "y" in self.df.columns:
-                prediction = self.model.predict(df[self.feature_names])
-            else:
-                raise Exception("External df as input has wrong format")
-        else:
+        if df is None:
             prediction = self.model.predict(self.df[-self.step :][self.feature_names])
+        elif "y" in self.df.columns:
+            prediction = self.model.predict(df[self.feature_names])
+        else:
+            raise Exception("External df as input has wrong format")
         return prediction
 
 

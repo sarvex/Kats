@@ -353,30 +353,29 @@ class CUSUMDetectorModel(DetectorModel):
         """
         data: the new data for the anoamly score calculation.
         """
-        if self.alert_fired:
-            cp = self.cps[-1]
-            tz = data.tz()
-            if tz is None:
-                change_time = pd.to_datetime(cp, unit="s")
-            else:
-                change_time = pd.to_datetime(cp, unit="s", utc=True).tz_convert(tz)
-
-            if change_time >= data.time.iloc[0]:
-                cp_index = data.time[data.time == change_time].index[0]
-                data_pre = data[: cp_index + 1]
-                score_pre = self._zeros_ts(data_pre)
-                score_post = SCORE_FUNC_DICT[score_func](
-                    data=data[cp_index + 1 :],
-                    pre_mean=self.pre_mean,
-                    pre_std=self.pre_std,
-                )
-                score_pre.extend(score_post, validate=False)
-                return score_pre
-            return SCORE_FUNC_DICT[score_func](
-                data=data, pre_mean=self.pre_mean, pre_std=self.pre_std
-            )
-        else:
+        if not self.alert_fired:
             return self._zeros_ts(data)
+        cp = self.cps[-1]
+        tz = data.tz()
+        if tz is None:
+            change_time = pd.to_datetime(cp, unit="s")
+        else:
+            change_time = pd.to_datetime(cp, unit="s", utc=True).tz_convert(tz)
+
+        if change_time >= data.time.iloc[0]:
+            cp_index = data.time[data.time == change_time].index[0]
+            data_pre = data[: cp_index + 1]
+            score_pre = self._zeros_ts(data_pre)
+            score_post = SCORE_FUNC_DICT[score_func](
+                data=data[cp_index + 1 :],
+                pre_mean=self.pre_mean,
+                pre_std=self.pre_std,
+            )
+            score_pre.extend(score_post, validate=False)
+            return score_pre
+        return SCORE_FUNC_DICT[score_func](
+            data=data, pre_mean=self.pre_mean, pre_std=self.pre_std
+        )
 
     def _zeros_ts(self, data: TimeSeriesData) -> TimeSeriesData:
         return TimeSeriesData(
@@ -445,7 +444,7 @@ class CUSUMDetectorModel(DetectorModel):
             freq_counts = (
                 historical_data.time.diff().value_counts().sort_values(ascending=False)
             )
-            if freq_counts.iloc[0] >= int(len(historical_data)) * 0.8 - 1:
+            if freq_counts.iloc[0] >= len(historical_data) * 0.8 - 1:
                 frequency = freq_counts.index[0]
             else:
                 logging.debug(f"freq_counts: {freq_counts}")

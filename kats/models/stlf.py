@@ -63,7 +63,6 @@ class STLFParams(Params):
         """
 
         logging.info("Method validate_params() is not implemented.")
-        pass
 
 
 class STLFModel(m.Model):

@@ -382,40 +382,28 @@ class TemporalHierarchicalModel:
         h = int(np.ceil(steps / m))
         if fcst_levels is None:
             fcst_levels = list(levels)
-        fcst = {}
         orig_fcst = self._predict_origin(steps, method)
 
         if method == "bu":
             # bottom_up method
             yhat = orig_fcst[1]
         elif method == "median":
-            # median method
-            tem = []
-            for k in levels:
-                tem.append(np.repeat(orig_fcst[k] / k, k))
+            tem = [np.repeat(orig_fcst[k] / k, k) for k in levels]
             tem = np.row_stack(tem)
             yhat = np.median(tem, axis=0)
         elif method in {"struc", "svar", "hvar", "mint_shrink", "mint_sample"}:
-            # transform fcsts into matrix
-            yh = []
-            for k in levels:
-                yh.append(orig_fcst[k].reshape(h, -1).T)
+            yh = [orig_fcst[k].reshape(h, -1).T for k in levels]
             yh = np.row_stack(yh)
             S = self.get_S()
             W = self.get_W(method)
             # when W is a vector, i.e., a simpler represent for a diagnoal matrix
-            if len(W.shape) == 1:
-                T = (S.T) / W
-            else:
-                T = np.linalg.solve(W, S).T
+            T = (S.T) / W if len(W.shape) == 1 else np.linalg.solve(W, S).T
             yhat = np.dot(S, np.linalg.solve(T.dot(S), T)).dot(yh)
             # extract forecasts for level 1
             yhat = (yhat[(-freq[1]) :, :].T).flatten()[:steps]
         else:
             raise _log_error(f"Reconciliation method {method} is invalid.")
-        # aggregate fcsts
-        for k in fcst_levels:
-            fcst[k] = self._aggregate_data(yhat, k)[: (steps // k)]
+        fcst = {k: self._aggregate_data(yhat, k)[: (steps // k)] for k in fcst_levels}
         ans = {"fcst": fcst}
         if origin_fcst:
             for elm in orig_fcst:

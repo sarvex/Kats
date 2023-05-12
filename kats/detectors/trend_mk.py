@@ -152,9 +152,8 @@ class MKDetector(Detector):
 
         if freq is None:
             return ts  # no seasonality
-        else:
-            map = {"weekly": 7, "monthly": 30, "yearly": 365}
-            ts = ts.rolling(window=map[freq]).mean()
+        map = {"weekly": 7, "monthly": 30, "yearly": 365}
+        ts = ts.rolling(window=map[freq]).mean()
         return ts
 
     def _smoothing(self, ts: pd.DataFrame) -> pd.DataFrame:
@@ -214,16 +213,11 @@ class MKDetector(Detector):
     def _drop_missing_values(self, x: np.ndarray) -> Tuple[np.ndarray, int]:
         """Drop the missing values in x."""
 
-        if x.ndim == 1:  # univariate case with 1-dim array/ shape(n,)
-            x = x[~(np.isnan(x))]
-        else:  # multivariate case with 2-dim arrat/ shape (n, c)
-            x = x[~np.isnan(x).any(axis=1)]
+        x = x[~(np.isnan(x))] if x.ndim == 1 else x[~np.isnan(x).any(axis=1)]
         return x, len(x)
 
     def _apply_threshold(self, trend, Tau):
-        if abs(Tau) <= self.threshold:
-            return "no trend"
-        return trend
+        return "no trend" if abs(Tau) <= self.threshold else trend
 
     def MKtest(self, ts: pd.DataFrame) -> Tuple[datetime, str, float, float]:
         """Performs the Mann-Kendall (MK) test for trend detection.
@@ -281,18 +275,14 @@ class MKDetector(Detector):
 
         anchor_date = ts.index[-1]
 
-        Tau_dict = {}  # contains score for individual cluster and overall
-        trend_dict = {}  # contains trend for individual cluster and overall
-
         x, c = self._preprocessing(ts)
 
         multi_mk_result = mk.multivariate_test(x)
         trend, p, Tau = multi_mk_result.trend, multi_mk_result.p, multi_mk_result.Tau
         trend = self._apply_threshold(trend, Tau)
 
-        Tau_dict["overall"] = Tau
-        trend_dict["overall"] = trend
-
+        Tau_dict = {"overall": Tau}
+        trend_dict = {"overall": trend}
         for i in range(c):
             x_i, n = self._drop_missing_values(x[:, i])
             # individual Tau score and trend
@@ -447,25 +437,24 @@ class MKDetector(Detector):
             trend_df = pd.DataFrame.from_dict(list(MK_statistics.trend_direction))
             overall_trend = trend_df["overall"]
 
-            if direction == "down":
+            if direction == "both":
+                MK_results = MK_statistics.loc[overall_trend != "no trend", :]
+            elif direction == "down":
                 MK_results = MK_statistics.loc[overall_trend == "decreasing", :]
             elif direction == "up":
                 MK_results = MK_statistics.loc[overall_trend == "increasing", :]
-            elif direction == "both":
-                MK_results = MK_statistics.loc[overall_trend != "no trend", :]
-        else:
-            if direction == "down":
-                MK_results = MK_statistics.loc[
-                    MK_statistics["trend_direction"] == "decreasing", :
-                ]
-            elif direction == "up":
-                MK_results = MK_statistics.loc[
-                    MK_statistics["trend_direction"] == "increasing", :
-                ]
-            elif direction == "both":
-                MK_results = MK_statistics.loc[
-                    MK_statistics["trend_direction"] != "no trend", :
-                ]
+        elif direction == "both":
+            MK_results = MK_statistics.loc[
+                MK_statistics["trend_direction"] != "no trend", :
+            ]
+        elif direction == "down":
+            MK_results = MK_statistics.loc[
+                MK_statistics["trend_direction"] == "decreasing", :
+            ]
+        elif direction == "up":
+            MK_results = MK_statistics.loc[
+                MK_statistics["trend_direction"] == "increasing", :
+            ]
         return MK_results
 
     def _convert_detected_tps(
@@ -543,11 +532,7 @@ class MKDetector(Detector):
                 MK_statistics_tp.Tau.abs().sort_values(axis=0, ascending=False).index
             )
 
-        if top_k is None:
-            # if top_k not specified, return all metrics ranked by Tau
-            return top_metrics
-
-        return top_metrics.iloc[:top_k]
+        return top_metrics if top_k is None else top_metrics.iloc[:top_k]
 
     def plot_heat_map(self) -> pd.DataFrame:
         """Plots the Tau of each metric in a heatmap.
@@ -610,7 +595,7 @@ class MKDetector(Detector):
 
         plt.plot(ts.index, ts.values)
 
-        if len(detected_time_points) == 0:
+        if not detected_time_points:
             logging.warning("No trend detected!")
 
         for t in detected_time_points:

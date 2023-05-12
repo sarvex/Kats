@@ -146,36 +146,26 @@ class BocpdDetectorModel(DetectorModel):
 
         bocpd_model = BOCPDetector(data=data)
 
-        if not self.slow_drift:
+        if self.threshold is not None:
+            _ = bocpd_model.detector(
+                model=BOCPDModelType.NORMAL_KNOWN_MODEL,
+                choose_priors=True,
+                agg_cp=True,
+                threshold=self.threshold,
+            )
+        elif self.slow_drift:
+            _ = bocpd_model.detector(
+                model=BOCPDModelType.TREND_CHANGE_MODEL,
+                choose_priors=False,
+                agg_cp=True,
+            )
 
-            if self.threshold is not None:
-                _ = bocpd_model.detector(
-                    model=BOCPDModelType.NORMAL_KNOWN_MODEL,
-                    choose_priors=True,
-                    agg_cp=True,
-                    threshold=self.threshold,
-                )
-            else:
-                _ = bocpd_model.detector(
-                    model=BOCPDModelType.NORMAL_KNOWN_MODEL,
-                    choose_priors=True,
-                    agg_cp=True,
-                )
         else:
-            if self.threshold is not None:
-                _ = bocpd_model.detector(
-                    model=BOCPDModelType.NORMAL_KNOWN_MODEL,
-                    choose_priors=True,
-                    agg_cp=True,
-                    threshold=self.threshold,
-                )
-            else:
-                _ = bocpd_model.detector(
-                    model=BOCPDModelType.TREND_CHANGE_MODEL,
-                    choose_priors=False,
-                    agg_cp=True,
-                )
-
+            _ = bocpd_model.detector(
+                model=BOCPDModelType.NORMAL_KNOWN_MODEL,
+                choose_priors=True,
+                agg_cp=True,
+            )
         change_prob_dict = bocpd_model.get_change_prob()
         change_prob = list(change_prob_dict.values())[0]
 

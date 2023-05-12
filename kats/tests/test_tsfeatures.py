@@ -321,7 +321,7 @@ class TSfeaturesTest(TestCase):
                     'value':[1, 4, 9, 4, 5, 5, 7, 2, 5, 1, 6, 3, 6, 5, 5]
                 }
             )
-        elif statsmodels_ver >= 0.12:
+        else:
             df = pd.DataFrame(
                 {
                     'time':range(20),
@@ -355,7 +355,7 @@ class TSfeaturesTest(TestCase):
                     'hw_gamma': 0.947
                 }
             )
-        elif statsmodels_ver >= 0.12:
+        else:
             self.assertEqual(
                 feats,
                 {

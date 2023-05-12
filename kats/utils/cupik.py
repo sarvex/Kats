@@ -118,13 +118,8 @@ class Pipeline:
 
         metadata: outputs from the transformer
         """
-        metadata = []
-        for s, d in zip(steps, data):
-            metadata.append(s.transform(d))
-        if self.useFeatures:
-            return metadata, metadata
-        else:
-            return data, metadata
+        metadata = [s.transform(d) for s, d in zip(steps, data)]
+        return (metadata, metadata) if self.useFeatures else (data, metadata)
 
     def __model__(
         self, steps: List[Any], data: List[TimeSeriesData], extra_params: Dict[str, Any]
@@ -279,10 +274,4 @@ class Pipeline:
             # function
             data = self.__fit__(n, s, data)
 
-        if (
-            self.univariate
-        ):  # When input data is one univariate time series, we directly
-            # present the output (not in a list)
-            return data[0]
-        else:
-            return data
+        return data[0] if self.univariate else data

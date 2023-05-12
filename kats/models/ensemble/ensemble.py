@@ -60,7 +60,6 @@ class BaseModelParams:
 
     def validate_params(self):
         logging.info("Method validate_params() is not implemented.")
-        pass
 
 
 class EnsembleParams:
@@ -105,16 +104,16 @@ class BaseEnsemble:
         """
 
         num_process = min(len(BASE_MODELS.keys()), (cpu_count() - 1) // 2)
-        if num_process < 1:
-            num_process = 1
+        num_process = max(num_process, 1)
         pool = Pool(processes=(num_process), maxtasksperchild=1000)
 
-        fitted_models = {}
-        for m in self.params.models:
-            fitted_models[m.model_name] = pool.apply_async(
+        fitted_models = {
+            m.model_name: pool.apply_async(
                 self._fit_single,
                 args=(BASE_MODELS[m.model_name.lower()], m.model_params),
             )
+            for m in self.params.models
+        }
         pool.close()
         pool.join()
         self.fitted = {model: res.get() for model, res in fitted_models.items()}
@@ -146,11 +145,10 @@ class BaseEnsemble:
             None
         """
 
-        predicted = {}
-        # pyre-fixme[16]: `BaseEnsemble` has no attribute `fitted`.
-        for model_name, model_fitted in self.fitted.items():
-            predicted[model_name] = model_fitted.predict(steps, **kwargs)
-        return predicted
+        return {
+            model_name: model_fitted.predict(steps, **kwargs)
+            for model_name, model_fitted in self.fitted.items()
+        }
 
     def plot(self):
         """Plot method for ensemble model (not implemented yet)

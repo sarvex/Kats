@@ -56,7 +56,6 @@ class ARIMAParams(Params):
 
     def validate_params(self):
         logging.info("Method validate_params() is not implemented.")
-        pass
 
 
 class ARIMAModel(m.Model):

@@ -271,19 +271,21 @@ class GetMetaData:
             A dictionary storing the best hyper-parameters and the errors for each candidate model.
         """
         num_process = min(len(self.all_models), (cpu_count() - 1) // 2)
-        if num_process < 1:
-            num_process = 1
+        num_process = max(num_process, 1)
         pool = ThreadPool(processes=num_process)
-        tuned_models = {}
-        for single_model in self.all_models:
-            tuned_models[single_model] = pool.apply_async(
+        tuned_models = {
+            single_model: pool.apply_async(
                 self._tune_single,
-                args=(self.all_models[single_model], self.all_params[single_model]),
+                args=(
+                    self.all_models[single_model],
+                    self.all_params[single_model],
+                ),
             )
+            for single_model in self.all_models
+        }
         pool.close()
         pool.join()
-        tuned_res = {model: res.get() for model, res in tuned_models.items()}
-        return tuned_res
+        return {model: res.get() for model, res in tuned_models.items()}
 
     def get_meta_data(self) -> Dict[str, Any]:
         """Get meta data, as well as search method and type of error metric
@@ -309,10 +311,10 @@ class GetMetaData:
 
         if self.method == SearchMethodEnum.GRID_SEARCH:
             local_method = "GridSearch"
-        elif (
-            self.method == SearchMethodEnum.RANDOM_SEARCH_UNIFORM
-            or self.method == SearchMethodEnum.RANDOM_SEARCH_SOBOL
-        ):
+        elif self.method in [
+            SearchMethodEnum.RANDOM_SEARCH_UNIFORM,
+            SearchMethodEnum.RANDOM_SEARCH_SOBOL,
+        ]:
             local_method = "RandomSearch"
         elif self.method == SearchMethodEnum.BAYES_OPT:
             local_method = "BayesOptimalSearch"

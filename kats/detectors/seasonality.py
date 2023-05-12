@@ -108,16 +108,14 @@ class ACFDetector(Detector):
         self.ts_diff = ts_diff
 
         if lags is None:
-            lags = int(len(ts) / 3)
+            lags = len(ts) // 3
         self.lags = lags
         ac, confint, qstat, qval = acf(ts_diff, nlags=lags, qstat=True, alpha=alpha)
-        # get seasonality cycle length
-        raw_seasonality = []
-        for i, _int in enumerate(confint):
-            if _int[0] >= 0 and i > 1:
-                raw_seasonality.append(i)
+        raw_seasonality = [
+            i for i, _int in enumerate(confint) if _int[0] >= 0 and i > 1
+        ]
         self.seasonality = self._get_seasonality_length(raw_seasonality)
-        self.seasonality_detected = True if self.seasonality else False
+        self.seasonality_detected = bool(self.seasonality)
 
         return {
             "seasonality_presence": self.seasonality_detected,

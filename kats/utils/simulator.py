@@ -121,9 +121,9 @@ class Simulator:
         x[0] = epsilon[0]
 
         for i in range(1, x.shape[0]):
-            AR = np.dot(ar[0 : min(i, p_max)], np.flip(x[i - min(i, p_max) : i], 0))
+            AR = np.dot(ar[:min(i, p_max)], np.flip(x[i - min(i, p_max) : i], 0))
             MA = np.dot(
-                ma[0 : min(i + 1, q_max)],
+                ma[: min(i + 1, q_max)],
                 np.flip(epsilon[i - min(i, q_max - 1) : i + 1], 0),
             )
             x[i] = AR + MA + t
@@ -149,8 +149,7 @@ class Simulator:
             periods=self.n,
         )
 
-        ts = TimeSeriesData(time=time, value=pd.Series(x[-self.n :].reshape(-1)))
-        return ts
+        return TimeSeriesData(time=time, value=pd.Series(x[-self.n :].reshape(-1)))
 
     def add_trend(
         self, magnitude: float, trend_type: str = "linear", multiply: bool = False
@@ -169,7 +168,7 @@ class Simulator:
         """
 
         def component_gen(timepoints):
-            if trend_type == "sigmoid" or trend_type == "S":
+            if trend_type in {"sigmoid", "S"}:
                 return magnitude * self.sigmoid(timepoints - 0.5)
             else:  # 'linear' trend by default
                 return magnitude * timepoints
@@ -275,8 +274,7 @@ class Simulator:
         >>> sim_ts = sim.stl_sim()
         """
 
-        ts = TimeSeriesData(time=self.time, value=pd.Series(self.timeseries))
-        return ts
+        return TimeSeriesData(time=self.time, value=pd.Series(self.timeseries))
 
     def _adjust_length(self, length: int):
         """
@@ -431,7 +429,7 @@ class Simulator:
         if len(cp_arr) > 0 and self.n < np.max(cp_arr):
             self._adjust_length(np.max(cp_arr))
 
-        ts = TimeSeriesData(
+        return TimeSeriesData(
             time=self.time,
             value=self._get_level_shift_y_val(
                 random_seed,
@@ -444,8 +442,6 @@ class Simulator:
                 z_score_arr,
             ),
         )
-
-        return ts
 
     def level_shift_multivariate_indep_sim(
         self,
@@ -633,6 +629,4 @@ class Simulator:
 
         y_val += noise_arr
 
-        ts = TimeSeriesData(time=self.time, value=pd.Series(y_val))
-
-        return ts
+        return TimeSeriesData(time=self.time, value=pd.Series(y_val))

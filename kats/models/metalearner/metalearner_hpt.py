@@ -268,17 +268,15 @@ class MetaLearnHPT:
         # If there is no categorical variable, out_dim_cat = []
         if not out_dim_cat:
             return []
-        res = []
-        for i in range(len(n_hidden_cat_combo)):
-            res.append(n_hidden_cat_combo[i] + [out_dim_cat[i]])
-        return res
+        return [
+            n_hidden_cat_combo[i] + [out_dim_cat[i]]
+            for i in range(len(n_hidden_cat_combo))
+        ]
 
     @staticmethod
     def _get_hidden_and_output_num(n_hidden_num: List[int], out_dim_num: int) -> List[int]:
         # If there is no numerical variable, out_dim_num = []
-        if not out_dim_num:
-            return []
-        return n_hidden_num + [out_dim_num]
+        return [] if not out_dim_num else n_hidden_num + [out_dim_num]
 
     def build_network(
         self,
@@ -309,15 +307,15 @@ class MetaLearnHPT:
             None.
         """
 
-        network_structure = (
-            (n_hidden_shared is None)
-            and (n_hidden_cat_combo is None)
-            and (n_hidden_num is None)
-        )
-
         default_model = self.__default_model
 
         if default_model is not None:
+            network_structure = (
+                (n_hidden_shared is None)
+                and (n_hidden_cat_combo is None)
+                and (n_hidden_num is None)
+            )
+
             if not network_structure:
                 msg = f"A default model structure ({default_model}) is initiated and cannot accept the customized network structure!"
                 raise _log_error(msg)
@@ -648,9 +646,8 @@ class MetaLearnHPT:
 
         if self.model is None:
             raise _log_error("Haven't trained a model.")
-        else:
-            joblib.dump(self.__dict__, file_path)
-            logging.info("Successfully saved the trained model!")
+        joblib.dump(self.__dict__, file_path)
+        logging.info("Successfully saved the trained model!")
 
     def load_model(self, file_path: str) -> None:
         """Load a pre-trained model from a binary.
@@ -741,9 +738,9 @@ class MultitaskNet(nn.Module):
 
         self.num_layer = nn.ModuleList()
         curr_input = input_and_n_hidden_shared[-1]
-        for i in range(len(n_hidden_and_output_num)):
-            self.num_layer.append(nn.Linear(curr_input, n_hidden_and_output_num[i]))
-            curr_input = n_hidden_and_output_num[i]
+        for item in n_hidden_and_output_num:
+            self.num_layer.append(nn.Linear(curr_input, item))
+            curr_input = item
 
     def forward(self, x):
         """Forward function in neural networks."""

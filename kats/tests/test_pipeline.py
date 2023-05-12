@@ -81,7 +81,7 @@ class cupikTest(TestCase):
         self.assertEqual(np.sum(bools), 144)
         if statsmodels_ver < 0.12:
             self.assertEqual(fitted.predict(1).fcst.values[0], 433.328591954023)
-        elif statsmodels_ver >= 0.12:
+        else:
             self.assertEqual(fitted.predict(1).fcst.values[0], 433.1270492317991)
 
 
@@ -96,5 +96,5 @@ class cupikTest(TestCase):
         self.assertEqual(len(pipe.metadata['trend_detector'][0]), 2)
         if statsmodels_ver < 0.12:
             self.assertEqual(fitted.predict(1).fcst.values[0], 433.328591954023)
-        elif statsmodels_ver >= 0.12:
+        else:
             self.assertEqual(fitted.predict(1).fcst.values[0], 433.1270492317991)

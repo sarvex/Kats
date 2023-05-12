@@ -150,10 +150,9 @@ class BayesianVAR(m.Model):
             times.append(time)
             residuals.append(self.Y[:, t]-point_pred)
         times_new = [self.start_date + timedelta(days=x) for x in times]
-        df_resid = pd.DataFrame(residuals, index=times_new,
-                                columns=self.data.value.columns)
-
-        return df_resid
+        return pd.DataFrame(
+            residuals, index=times_new, columns=self.data.value.columns
+        )
 
     def fit(self) -> None:
         """Fit Bayesian VAR model"""
@@ -406,7 +405,7 @@ class BayesianVAR(m.Model):
             Y_curr = np.concatenate([Y_curr, look_ahead_pred[:, np.newaxis]], axis=1)
 
         assert (
-            len(times) > 0
+            times
         ), "Forecast produced no values. Please set steps > 0 or include_history=True."
 
         indiv_forecasts = {}

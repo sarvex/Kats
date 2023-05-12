@@ -43,7 +43,7 @@ class OutlierDetector(Detector):
         self, data: TimeSeriesData, decomp: str = "additive", iqr_mult: float = 3.0
     ) -> None:
         super().__init__(data)
-        if decomp in ["additive", "multiplicative"]:
+        if decomp in {"additive", "multiplicative"}:
             self.decomp = decomp
         else:
             logging.info("Invalid decomposition setting specified")
@@ -157,15 +157,14 @@ class MultivariateAnomalyDetector(Detector):
 
         # pyre-fixme[16]: `Optional` has no attribute `diff`.
         time_diff = data.time.sort_values().diff().dropna()
-        if len(time_diff.unique()) == 1:  # check constant frequenccy
-            freq = time_diff.unique()[0].astype("int")
-            self.granularity_days = freq / (24 * 3600 * (10 ** 9))
-        else:
+        if len(time_diff.unique()) != 1:
             raise RuntimeError(
                 "Frequency of metrics is not constant."
                 "Please check for missing or duplicate values"
             )
 
+        freq = time_diff.unique()[0].astype("int")
+        self.granularity_days = freq / (24 * 3600 * (10 ** 9))
         self.training_days = training_days
         self.detector_model = model_type
 

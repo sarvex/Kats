@@ -109,11 +109,10 @@ def generate_meta_data(n):
     models = list(base_models.keys())
     ans = []
     for i in range(n):
-        hpt = {}
-        j = 0
-        for m in base_models:
-            hpt[m] = (generators[m].gen(1).arms[0].parameters, res[i, j])
-            j += 1
+        hpt = {
+            m: (generators[m].gen(1).arms[0].parameters, res[i, j])
+            for j, m in enumerate(base_models)
+        }
         ans.append(
             {
                 "hpt_res": hpt,
@@ -134,7 +133,7 @@ def generate_meta_data_by_model(model, n, d=40):
     )
     x = np.random.randn(n * d).reshape(n, -1)
     x = pd.DataFrame(x)
-    y = [generator.gen(1).arms[0].parameters for i in range(n)]
+    y = [generator.gen(1).arms[0].parameters for _ in range(n)]
     y = pd.DataFrame(y)
     return x, y
 
@@ -348,9 +347,7 @@ class MetaLearnHPTTest(TestCase):
                     and abs(dict1[elm] - dict2[elm]) <= 1e-5
                 ):
                     pass
-                elif dict1[elm] == dict2[elm]:
-                    pass
-                else:
+                elif dict1[elm] != dict2[elm]:
                     msg = (
                         "Predictions given by .pred and .pred_by_feature are different! The predictions are: .pred:"
                         f"{dict1[elm]}, .pred_by_feature: {dict2[elm]}."

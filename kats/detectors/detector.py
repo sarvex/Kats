@@ -66,8 +66,7 @@ class Detector(ABC):
         # may contain multiple time series y
         df_final.columns = [f"y_{i}" for i in range(i)]
         df_final["time"] = df_final.index
-        ts_out = TimeSeriesData(df_final)
-        return ts_out
+        return TimeSeriesData(df_final)
 
     def plot(self) -> None:
         # TODO

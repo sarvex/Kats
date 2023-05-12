@@ -20,10 +20,9 @@ from kats.models.reconciliation.thm import TemporalHierarchicalModel
 
 def generate_ts(st="2018-05-06", et="2021-05-06"):
     time = pd.date_range(st, et, freq="D")
-    ts = TimeSeriesData(
+    return TimeSeriesData(
         pd.DataFrame({"time": time, "y": np.random.uniform(0, 1, len(time))})
     )
-    return ts
 
 
 ts = generate_ts("2020-05-06", "2020-05-15")

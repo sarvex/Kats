@@ -58,45 +58,41 @@ class MetaLearnModelSelect:
     def __init__(
         self, metadata: Optional[List[Dict[str, Any]]] = None, load_model: bool = False
     ) -> None:
-        if not load_model:
-            # pyre-fixme[6]: Expected `Sized` for 1st param but got
-            #  `Optional[List[typing.Any]]`.
-            if len(metadata) <= 30:
-                msg = "Dataset is too small to train a meta learner!"
-                logging.error(msg)
-                raise ValueError(msg)
-
-            if metadata is None:
-                msg = "Missing metadata!"
-                logging.error(msg)
-                raise ValueError(msg)
-
-            if "hpt_res" not in metadata[0]:
-                msg = "Missing best hyper-params, not able to train a meta learner!"
-                logging.error(msg)
-                raise ValueError(msg)
-
-            if "features" not in metadata[0]:
-                msg = "Missing time series features, not able to train a meta learner!"
-                logging.error(msg)
-                raise ValueError(msg)
-
-            if "best_model" not in metadata[0]:
-                msg = "Missing best models, not able to train a meta learner!"
-                logging.error(msg)
-                raise ValueError(msg)
-
-            self.metadata = metadata
-            self._reorganize_data()
-            self._validate_data()
-
-            self.scale = False
-            self.clf = None
-        elif load_model:
-            pass
-        else:
-            msg = "Fail to initiate MetaLearnModelSelect."
+        if load_model:
+            return
+        # pyre-fixme[6]: Expected `Sized` for 1st param but got
+        #  `Optional[List[typing.Any]]`.
+        if len(metadata) <= 30:
+            msg = "Dataset is too small to train a meta learner!"
+            logging.error(msg)
             raise ValueError(msg)
+
+        if metadata is None:
+            msg = "Missing metadata!"
+            logging.error(msg)
+            raise ValueError(msg)
+
+        if "hpt_res" not in metadata[0]:
+            msg = "Missing best hyper-params, not able to train a meta learner!"
+            logging.error(msg)
+            raise ValueError(msg)
+
+        if "features" not in metadata[0]:
+            msg = "Missing time series features, not able to train a meta learner!"
+            logging.error(msg)
+            raise ValueError(msg)
+
+        if "best_model" not in metadata[0]:
+            msg = "Missing best models, not able to train a meta learner!"
+            logging.error(msg)
+            raise ValueError(msg)
+
+        self.metadata = metadata
+        self._reorganize_data()
+        self._validate_data()
+
+        self.scale = False
+        self.clf = None
 
     def _reorganize_data(self) -> None:
         hpt_list = []
@@ -136,13 +132,12 @@ class MetaLearnModelSelect:
         local_count = list(self.count_category().values())
         if min(local_count) * num_class < 30:
             msg = "Not recommend to do downsampling! Dataset will be too small after downsampling!"
-            logging.info(msg)
         elif max(local_count) > min(local_count) * 5:
             msg = "Number of obs in majority class is much greater than in minority class. Downsampling is recommended!"
-            logging.info(msg)
         else:
             msg = "No significant data imbalance problem, no need to do downsampling."
-            logging.info(msg)
+
+        logging.info(msg)
 
     def count_category(self) -> Dict[str, int]:
         """Count the number of observations of each candidate model in meta-data.
@@ -197,8 +192,8 @@ class MetaLearnModelSelect:
 
         combined = pd.concat([self.metadataX.iloc[i], self.metadataX.iloc[j]], axis=1)
         combined.columns = [
-            str(self.metadataY.iloc[i]) + " model",
-            str(self.metadataY.iloc[j]) + " model",
+            f"{str(self.metadataY.iloc[i])} model",
+            f"{str(self.metadataY.iloc[j])} model",
         ]
         # pyre-fixme[29]: `CachedAccessor` is not a function.
         combined.plot(kind="bar", figsize=(12, 6))
@@ -431,8 +426,7 @@ class MetaLearnModelSelect:
         idx = np.random.choice(np.arange(n), n * rep)
         sample = diff[idx].reshape(-1, n)
         bs = np.average(sample, axis=1)
-        pvalue = np.average(bs < 0)
-        return pvalue
+        return np.average(bs < 0)
 
     def pred_fuzzy(
         self, source_ts: TimeSeriesData, ts_scale: bool = True, sig_level: float = 0.2
@@ -474,8 +468,7 @@ class MetaLearnModelSelect:
         else:
             label = self.clf.classes_[idx[:1]]
             prob = prob[idx[:1]]
-        ans = {"label": label, "probability": prob, "pvalue": pvalue}
-        return ans
+        return {"label": label, "probability": prob, "pvalue": pvalue}
 
     def __str__(self):
         return "MetaLearnModelSelect"

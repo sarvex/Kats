@@ -46,12 +46,12 @@ AIR_DF_UNIXTIME.ds = AIR_DF_DATETIME.ds.apply(
 AIR_DF_WITH_DEFAULT_NAMES = AIR_DF.copy(deep=True)
 AIR_DF_WITH_DEFAULT_NAMES.columns = [DEFAULT_TIME_NAME, DEFAULT_VALUE_NAME]
 MULTIVAR_AIR_DF = AIR_DF.copy(deep=True)
-MULTIVAR_AIR_DF[VALUE_COL_NAME + "_1"] = MULTIVAR_AIR_DF.y * 2
+MULTIVAR_AIR_DF[f"{VALUE_COL_NAME}_1"] = MULTIVAR_AIR_DF.y * 2
 MULTIVAR_AIR_DF_DATETIME = MULTIVAR_AIR_DF.copy(deep=True)
 MULTIVAR_AIR_DF_DATETIME.ds = MULTIVAR_AIR_DF_DATETIME.ds.apply(
     lambda x: parser.parse(x)
 )
-MULTIVAR_VALUE_DF = MULTIVAR_AIR_DF[[VALUE_COL_NAME, VALUE_COL_NAME + "_1"]]
+MULTIVAR_VALUE_DF = MULTIVAR_AIR_DF[[VALUE_COL_NAME, f"{VALUE_COL_NAME}_1"]]
 AIR_TIME_SERIES = AIR_DF.ds
 AIR_TIME_SERIES_PD_DATETIME = pd.to_datetime(AIR_TIME_SERIES)
 AIR_TIME_SERIES_UNIXTIME = AIR_TIME_SERIES_PD_DATETIME.apply(
@@ -216,7 +216,7 @@ class TimeSeriesDataInitTest(unittest.TestCase):
         # univariate data in US/Pacific Time Zone with missing data
         cls.ts_univar_PST_missing_tz = TimeSeriesData(
             df=pd.DataFrame(
-                {"time": (cls.unix_list[0:4] + cls.unix_list[7:10]), "value": [0] * 7}
+                {"time": cls.unix_list[:4] + cls.unix_list[7:10], "value": [0] * 7}
             ),
             use_unix_time=True,
             unix_time_units="s",
@@ -758,14 +758,12 @@ class TimeSeriesDataOpsTest(unittest.TestCase):
         )
         # DataFrames with value offset
         transformed_df_value = AIR_DF.copy(deep=True)
-        transformed_df_value.y = transformed_df_value.y.apply(lambda x: x * 2)
+        transformed_df_value.y = transformed_df_value.y * 2
         transformed_df_value_inv = AIR_DF.copy(deep=True)
-        transformed_df_value_inv.y = transformed_df_value_inv.y.apply(lambda x: x * -1)
+        transformed_df_value_inv.y = transformed_df_value_inv.y * -1
         # DataFrame with date and value offset
         transformed_df_date_and_value = transformed_df_date.copy(deep=True)
-        transformed_df_date_and_value.y = transformed_df_date_and_value.y.apply(
-            lambda x: x * 2
-        )
+        transformed_df_date_and_value.y = transformed_df_date_and_value.y * 2
         # DataFrame with date offset (multivariate)
         transformed_df_date_multi = transformed_df_date.copy(deep=True)
         transformed_df_date_multi[VALUE_COL_NAME + "_1"] = (
@@ -1087,12 +1085,12 @@ class TimeSeriesDataOpsTest(unittest.TestCase):
         # Full/Empty cases
         self.assertEqual(self.ts_univ_1[:], self.ts_univ_1)
         self.assertEqual(
-            self.ts_univ_1[0:0],
+            self.ts_univ_1[:0],
             TimeSeriesData(
                 time=pd.Series(name=TIME_COL_NAME),
                 value=pd.Series(name=VALUE_COL_NAME),
                 time_col_name=TIME_COL_NAME,
-            )
+            ),
         )
 
     def test_plot(self) -> None:

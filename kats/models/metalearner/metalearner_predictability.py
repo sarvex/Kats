@@ -278,8 +278,7 @@ class MetaLearnPredictability:
                 f"{features}. Fill in NaNs with 0."
             )
             logging.warning(msg)
-        ans = True if self.pred_by_feature([x])[0] == 1 else False
-        return ans
+        return self.pred_by_feature([x])[0] == 1
 
     def pred_by_feature(
         self, source_x: Union[np.ndarray, List[np.ndarray], pd.DataFrame]
@@ -307,8 +306,7 @@ class MetaLearnPredictability:
         x[np.isnan(x)] = 0.0
         if self.rescale:
             x = (x - self.features_mean) / self.features_std
-        pred = (self.clf.predict_proba(x)[:, 1] < self._clf_threshold).astype(int)
-        return pred
+        return (self.clf.predict_proba(x)[:, 1] < self._clf_threshold).astype(int)
 
     def save_model(self, file_path: str) -> None:
         """Save the trained model.

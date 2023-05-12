@@ -96,28 +96,25 @@ class TimeSeriesDecomposition:
             result = seasonal_decompose(
                 original, model=self.decomposition, period=self.period
             )
+        elif "T" in self.freq:
+            result = seasonal_decompose(
+                original, model=self.decomposition, period=2
+            )
+            logging.warning(
+                "Seasonal Decompose cannot handle sub day level granularity"
+            )
+            logging.warning(
+                "Please consider setting period yourself based on the input data"
+            )
+            logging.warning("Defaulting to a period of 2")
         else:
-            if "T" in self.freq:
-                result = seasonal_decompose(
-                    original, model=self.decomposition, period=2
-                )
-                logging.warning(
-                    "Seasonal Decompose cannot handle sub day level granularity"
-                )
-                logging.warning(
-                    "Please consider setting period yourself based on the input data"
-                )
-                logging.warning("Defaulting to a period of 2")
-            else:
-                result = seasonal_decompose(original, model=self.decomposition)
+            result = seasonal_decompose(original, model=self.decomposition)
 
-        output = {
+        return {
             "trend": result.trend,
             "seasonal": result.seasonal,
             "resid": result.resid,
         }
-
-        return output
 
     def __decompose_STL(self, original):
         """Internal function to call STL to do the decomposition.
@@ -146,7 +143,7 @@ class TimeSeriesDecomposition:
                 trend_jump=self.trend_jump,
                 low_pass_jump=self.low_pass_jump,
             ).fit()
-            output = {
+            return {
                 "trend": result.trend,
                 "seasonal": result.seasonal,
                 "resid": result.resid,
@@ -172,13 +169,11 @@ class TimeSeriesDecomposition:
                 trend_jump=self.trend_jump,
                 low_pass_jump=self.low_pass_jump,
             ).fit()
-            output = {
+            return {
                 "trend": np.exp(result.trend),
                 "seasonal": np.exp(result.seasonal),
                 "resid": np.exp(result.resid),
             }
-
-        return output
 
     def __decompose(self, original):
 

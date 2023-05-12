@@ -215,12 +215,12 @@ class CUSUMDetector(Detector):
         interest_window = self.interest_window
 
         # locate the change point using cusum method
-        if change_direction == "increase":
-            changepoint_func = np.argmin
-            logging.debug("Detecting increase changepoint.")
         if change_direction == "decrease":
             changepoint_func = np.argmax
             logging.debug("Detecting decrease changepoint.")
+        elif change_direction == "increase":
+            changepoint_func = np.argmin
+            logging.debug("Detecting increase changepoint.")
         n = 0
         # use the middle point as initial change point to estimate mu0 and mu1
         if interest_window is not None:
@@ -301,11 +301,14 @@ class CUSUMDetector(Detector):
         if scale == 0:
             scale = sigma_tilde
 
-        llr = -2 * (
-            self._log_llr(ts[: (changepoint + 1)], mu_tilde, sigma_tilde, mu0, scale)
-            + self._log_llr(ts[(changepoint + 1) :], mu_tilde, sigma_tilde, mu1, scale)
+        return -2 * (
+            self._log_llr(
+                ts[: (changepoint + 1)], mu_tilde, sigma_tilde, mu0, scale
+            )
+            + self._log_llr(
+                ts[(changepoint + 1) :], mu_tilde, sigma_tilde, mu1, scale
+            )
         )
-        return llr
 
     def _log_llr(
         self, x: np.ndarray, mu0: float, sigma0: float, mu1: float, sigma1: float
@@ -368,8 +371,7 @@ class CUSUMDetector(Detector):
         """
         Calculate the magnitude of a time series.
         """
-        magnitude = np.quantile(ts, self.magnitude_quantile, interpolation="nearest")
-        return magnitude
+        return np.quantile(ts, self.magnitude_quantile, interpolation="nearest")
 
     # pyre-fixme[14]: `detector` overrides method defined in `Detector` inconsistently.
     def detector(self, **kwargs) -> List[Tuple[TimeSeriesChangePoint, CUSUMMetadata]]:
@@ -508,8 +510,7 @@ class CUSUMDetector(Detector):
         converted = []
         detected_cps = cusum_changepoints
 
-        for direction in detected_cps:
-            dir_cps = detected_cps[direction]
+        for direction, dir_cps in detected_cps.items():
             if dir_cps["regression_detected"] or return_all_changepoints:
                 # we have a change point
                 change_point = TimeSeriesChangePoint(
@@ -550,7 +551,7 @@ class CUSUMDetector(Detector):
 
         plt.plot(data_df[time_col_name], data_df[val_col_name])
 
-        if len(change_points) == 0:
+        if not change_points:
             logging.warning("No change points detected!")
 
         for change in change_points:
@@ -645,7 +646,7 @@ class MultiCUSUMDetector(CUSUMDetector):
 
         mu_tilde = np.mean(ts, axis=0)
         sigma_pooled = np.cov(ts, rowvar=False)
-        llr = -2 * (
+        return -2 * (
             self._log_llr_multi(
                 ts[: (changepoint + 1)],
                 mu_tilde,
@@ -661,7 +662,6 @@ class MultiCUSUMDetector(CUSUMDetector):
                 sigma1,
             )
         )
-        return llr
 
     def _log_llr_multi(
         self,

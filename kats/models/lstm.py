@@ -52,7 +52,6 @@ class LSTMParams(Params):
 
     def validate_params(self):
         logging.info("Method validate_params() is not implemented.")
-        pass
 
 
 class LSTMForecast(nn.Module):

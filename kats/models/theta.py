@@ -48,7 +48,6 @@ class ThetaParams(Params):
         """Validate the parameters for theta model"""
 
         logging.info("Method validate_params() is not implemented.")
-        pass
 
 
 class ThetaModel(m.Model):

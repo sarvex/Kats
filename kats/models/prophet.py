@@ -167,8 +167,8 @@ class ProphetParams(Params):
 
         # If custom_seasonalities passed, ensure they contain the required keys.
         reqd_seasonality_keys = ["name", "period", "fourier_order"]
-        if not all(
-            req_key in seasonality
+        if any(
+            req_key not in seasonality
             for req_key in reqd_seasonality_keys
             for seasonality in self.custom_seasonalities
         ):
@@ -177,7 +177,6 @@ class ProphetParams(Params):
             raise ValueError(msg)
 
         logging.info("Method validate_params() is not fully implemented.")
-        pass
 
 
 class ProphetModel(m.Model):

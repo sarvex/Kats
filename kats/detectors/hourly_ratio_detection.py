@@ -53,9 +53,7 @@ class HourlyRatioDetector(Detector):
             raise ValueError(msg)
 
         if not self.data.is_univariate():
-            msg = "Only support univariate time series, but get {}.".format(
-                type(self.data.value)
-            )
+            msg = f"Only support univariate time series, but get {type(self.data.value)}."
             logging.error(msg)
             raise ValueError(msg)
         self._ratiodf = None
@@ -73,7 +71,6 @@ class HourlyRatioDetector(Detector):
         Now only support aggregation functions: min, max, sum, mean.
         """
 
-        lower_granularity = ["T", "S", "L", "U", "N"]
         if self.freq is None:
             self.freq = self.data.infer_freq_robust()
         if self.freq == "H" or (
@@ -85,17 +82,17 @@ class HourlyRatioDetector(Detector):
             logging.info(msg)
             return
         if isinstance(self.freq, str):
+            lower_granularity = ["T", "S", "L", "U", "N"]
             for level in lower_granularity:
                 # pyre-fixme[58]: `in` is not supported for right operand type
                 #  `Optional[str]`.
                 if level in self.freq:
-                    msg = "Input data granularity is {} and we can continue processing using aggregation function.".format(
-                        self.freq
-                    )
+                    msg = f"Input data granularity is {self.freq} and we can continue processing using aggregation function."
                     logging.info(msg)
-        elif isinstance(self.freq, pd.Timedelta) and self.freq.value < 3600000000000:
-            pass
-        else:
+        elif (
+            not isinstance(self.freq, pd.Timedelta)
+            or self.freq.value >= 3600000000000
+        ):
             msg = "Time series should be of hourly or finer granularity."
             logging.error(msg)
             raise ValueError(msg)
@@ -105,11 +102,11 @@ class HourlyRatioDetector(Detector):
             logging.error(msg)
             raise ValueError(msg)
         elif self.aggregate in ["min", "max", "sum", "mean"]:
-            msg = "Aggregation method is {}.".format(self.aggregate)
+            msg = f"Aggregation method is {self.aggregate}."
             logging.info(msg)
             return
         else:
-            msg = "Aggregation methd {} is not implemented.".format(self.aggregate)
+            msg = f"Aggregation methd {self.aggregate} is not implemented."
             logging.error(msg)
             raise ValueError(msg)
 
@@ -133,9 +130,7 @@ class HourlyRatioDetector(Detector):
                     .agg(self.aggregate)
                     .reset_index()
                 )
-                msg = "Successfully aggregate data to hourly level using {}".format(
-                    self.aggregate
-                )
+                msg = f"Successfully aggregate data to hourly level using {self.aggregate}"
                 logging.info(msg)
             df["counts"] = df.groupby("date")["hour"].transform("count")
             # filter out dates with less than 24 observations
@@ -243,13 +238,13 @@ class HourlyRatioDetector(Detector):
             self._ratiodf[self._ratiodf["weekday"] == weekday]["date"].values
         )
         labs = [(t in anomaly_dates) for t in dates]
-        logging.info("# of anomaly dates: {}".format(np.sum(labs)))
+        logging.info(f"# of anomaly dates: {np.sum(labs)}")
         for i in range(len(obs)):
             if not labs[i]:
                 plt.plot(obs[i], "--", color="silver", alpha=0.5)
             else:
                 plt.plot(obs[i], "--", color="navy", label=str(dates[i]))
-        plt.title("Hourly Ratio Plot for Weeday {}".format(weekday))
+        plt.title(f"Hourly Ratio Plot for Weeday {weekday}")
         plt.legend()
         plt.show()
         return

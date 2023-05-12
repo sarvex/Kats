@@ -560,9 +560,7 @@ class BOCPDetector(Detector):
             # Multivariate
             ts_names = self.data.value.columns
 
-        change_points_per_ts = {}
-        for ts_name in ts_names:
-            change_points_per_ts[ts_name] = []
+        change_points_per_ts = {ts_name: [] for ts_name in ts_names}
         for cp in change_points:
             change_points_per_ts[cp[1].ts_name].append(cp)
 
@@ -965,7 +963,7 @@ class _BayesOnlineChangePoint(Detector):
                 change_prob = np.hstack((rt_posterior[lag : self.T, lag, t], np.zeros(lag)))
                 # handle the fact that the first point is not a changepoint
                 change_prob[0] = 0.
-            elif self.agg_cp:
+            else:
                 change_prob = self._calc_agg_cppprob(t)
 
             change_points = np.where(change_prob > threshold[t])[0]
@@ -1212,12 +1210,11 @@ class _NormalKnownPrec(_PredictiveModel):
             pred_arr: Array with predicted log probabilities for each starting point.
         """
 
-        pred_arr = self._norm_logpdf(
+        return self._norm_logpdf(
             x,
             self._mean_arr[self._maxT + self._ptr : self._maxT + self._ptr + t],
-            self._std_arr[self._maxT + self._ptr : self._maxT + self._ptr + t]
+            self._std_arr[self._maxT + self._ptr : self._maxT + self._ptr + t],
         )
-        return pred_arr
 
     def pred_mean(self, t: int, x: float) -> np.ndarray:
         return self._mean_arr[self._maxT + self._ptr : self._maxT + self._ptr + t]
@@ -1352,15 +1349,14 @@ class _BayesianLinReg(_PredictiveModel):
             None.
         """
 
-        data = self.data
         mu_prior = self.parameters.mu_prior
-        num_points_prior = self.parameters.num_points_prior
-        readjust_sigma_prior = self.parameters.readjust_sigma_prior
         plot_regression_prior = self.parameters.plot_regression_prior
 
         # Set up linear regression prior
         if mu_prior is None:
+            data = self.data
             if data is not None:
+                num_points_prior = self.parameters.num_points_prior
                 self.prior_regression_numpoints = num_points_prior
 
                 time = self.all_time[: self.prior_regression_numpoints]
@@ -1372,6 +1368,7 @@ class _BayesianLinReg(_PredictiveModel):
                 slope, intercept, r_value, p_value, std_err = linregress(time, vals)
                 self.mu_prior = mu_prior = np.array([intercept, slope])  # Set up mu_prior
 
+                readjust_sigma_prior = self.parameters.readjust_sigma_prior
                 if readjust_sigma_prior:
                     logging.info("Readjusting the prior for Inv-Gamma for sigma^2.")
                     # these values are the mean/variance of sigma^2: Inv-Gamma(*,*)
@@ -1643,7 +1640,7 @@ class _PoissonProcessModel(_PredictiveModel):
         # everything is already set up in __init__!
         pass
 
-    def pred_prob(self, t, x):  # predict the probability that time t, we have value x
+    def pred_prob(self, t, x):    # predict the probability that time t, we have value x
         """Predictive log probability of a new data point.
 
         Args:
@@ -1654,8 +1651,7 @@ class _PoissonProcessModel(_PredictiveModel):
             probs: array of log probabilities, for each starting point.
         """
 
-        probs = nbinom.logpmf(x, self._n[t], self._p[t])
-        return probs
+        return nbinom.logpmf(x, self._n[t], self._p[t])
 
     def pred_mean(self, t, x):
         """Predicted mean at the next time point.

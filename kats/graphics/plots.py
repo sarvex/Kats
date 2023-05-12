@@ -27,7 +27,7 @@ def plot_scatter_with_confints(
     """
     prediction_color = "#0072B2"
     error_color = "rgba(0, 114, 178, 0.2)"  # '#0072B2' with 0.2 opacity
-    fig = go.Figure(
+    return go.Figure(
         {
             "data": [
                 go.Scatter(
@@ -59,11 +59,12 @@ def plot_scatter_with_confints(
                 ),
             ],
             "layout": go.Layout(
-                title=title, yaxis={"title": "Correlation"}, xaxis={"title": "Lag"}
+                title=title,
+                yaxis={"title": "Correlation"},
+                xaxis={"title": "Lag"},
             ),
         }
     )
-    return fig
 
 
 def make_fourier_plot(

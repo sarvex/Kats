@@ -133,11 +133,7 @@ class ProphetDetectorModel(DetectorModel):
         remove_outliers=False,
         score_func: ProphetScoreFunction = ProphetScoreFunction.deviation_from_predicted_val.value,
     ) -> None:
-        if serialized_model:
-            self.model = model_from_json(serialized_model)
-        else:
-            self.model = None
-
+        self.model = model_from_json(serialized_model) if serialized_model else None
         self.strictness_factor = strictness_factor
         self.uncertainty_samples = uncertainty_samples
         self.remove_outliers = remove_outliers
@@ -237,7 +233,7 @@ class ProphetDetectorModel(DetectorModel):
         time_df = pd.DataFrame({PROPHET_TIME_COLUMN: data.time})
         predict_df = self.model.predict(time_df)
         zeros = np.zeros(len(data))
-        response = AnomalyResponse(
+        return AnomalyResponse(
             scores=TimeSeriesData(
                 time=data.time,
                 value=SCORE_FUNC_DICT[self.score_func](
@@ -258,10 +254,11 @@ class ProphetDetectorModel(DetectorModel):
             predicted_ts=TimeSeriesData(
                 time=data.time, value=predict_df[PROPHET_YHAT_COLUMN]
             ),
-            anomaly_magnitude_ts=TimeSeriesData(time=data.time, value=pd.Series(zeros)),
+            anomaly_magnitude_ts=TimeSeriesData(
+                time=data.time, value=pd.Series(zeros)
+            ),
             stat_sig_ts=TimeSeriesData(time=data.time, value=pd.Series(zeros)),
         )
-        return response
 
     @staticmethod
     def _remove_outliers(

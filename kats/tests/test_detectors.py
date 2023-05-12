@@ -353,9 +353,7 @@ class CUSUMDetectorTest(TestCase):
             series[t] = np.sum(gamma_jtp1)
             gamma_jt = gamma_jtp1
             gamma_star_jt = gamma_star_jtp1
-        wanted_series = series[-duration:]  # Discard burn in
-
-        return wanted_series
+        return series[-duration:]
 
     def test_seasonality(self) -> None:
 
@@ -1255,7 +1253,7 @@ class MKDetectorTest(TestCase):
         np.random.seed(20)
 
         n_days = len(time)
-        ix = np.array([np.arange(n_days) for i in range(ndim)])
+        ix = np.array([np.arange(n_days) for _ in range(ndim)])
         initial = np.random.randint(9000.0, 10000.0, size=(ndim, 1))
         trend_change = -np.random.randint(60, size=(ndim, 1))
         trend = np.random.randint(2.0, 6.0, size=(ndim, 1))
@@ -1565,7 +1563,7 @@ class ChangePointIntervalTest(TestCase):
         previous_int.data = self.previous
 
         # tests whether data is clipped property to start and end dates
-        np.testing.assert_array_equal(previous_values[0:9], previous_int.data)
+        np.testing.assert_array_equal(previous_values[:9], previous_int.data)
 
         # test extending the data
         # now the data is extended to include the whole sequence
@@ -1673,9 +1671,7 @@ class ChangePointIntervalTest(TestCase):
         # tests whether data is clipped property to start and end dates
         for i in range(num_seq):
             self.assertEqual(
-                # pyre-fixme[16]: Optional type has no attribute `__getitem__`.
-                previous_int.data[:, i].tolist(),
-                previous_values[i][0:9].tolist(),
+                previous_int.data[:, i].tolist(), previous_values[i][:9].tolist()
             )
 
         # test extending the data
@@ -2314,7 +2310,7 @@ class TestStatSigDetector(TestCase):
         previous_seq = [date_start + timedelta(days=x) for x in range(60)]
         values = np.random.randn(len(previous_seq))
         ts_init = TimeSeriesData(
-            pd.DataFrame({"time": previous_seq[0:30], "value": values[0:30]})
+            pd.DataFrame({"time": previous_seq[:30], "value": values[:30]})
         )
 
         ts_later = TimeSeriesData(
@@ -2427,8 +2423,8 @@ class TestStatSigDetector(TestCase):
         ts_init = TimeSeriesData(
             pd.DataFrame(
                 {
-                    **{"time": previous_seq[0:30]},
-                    **{f"value_{i}": values[i][0:30] for i in range(num_seq)},
+                    **{"time": previous_seq[:30]},
+                    **{f"value_{i}": values[i][:30] for i in range(num_seq)},
                 }
             )
         )
@@ -2462,8 +2458,8 @@ class TestMultiStatSigDetector(TestCase):
         ts_init = TimeSeriesData(
             pd.DataFrame(
                 {
-                    **{"time": previous_seq[0:30]},
-                    **{f"value_{i}": values[i][0:30] for i in range(num_seq)},
+                    **{"time": previous_seq[:30]},
+                    **{f"value_{i}": values[i][:30] for i in range(num_seq)},
                 }
             )
         )
@@ -2488,8 +2484,8 @@ class TestMultiStatSigDetector(TestCase):
         ts_init_renamed = TimeSeriesData(
             pd.DataFrame(
                 {
-                    **{"time": previous_seq[0:30]},
-                    **{f"ts_{i}": values[i][0:30] for i in range(num_seq)},
+                    **{"time": previous_seq[:30]},
+                    **{f"ts_{i}": values[i][:30] for i in range(num_seq)},
                 }
             )
         )
@@ -2612,8 +2608,8 @@ class TestMultiStatSigDetector(TestCase):
         ts_init = TimeSeriesData(
             pd.DataFrame(
                 {
-                    **{"time": previous_seq[0:30]},
-                    **{f"value_{i}": values[i][0:30] for i in range(num_seq)},
+                    **{"time": previous_seq[:30]},
+                    **{f"value_{i}": values[i][:30] for i in range(num_seq)},
                 }
             )
         )
@@ -3107,8 +3103,7 @@ class TestProphetDetector(TestCase):
     def merge_ts(self, ts1, ts2):
         ts1_df, ts2_df = ts1.to_dataframe(), ts2.to_dataframe()
         merged_df = (ts1_df.set_index("time") + ts2_df.set_index("time")).reset_index()
-        merged_ts = TimeSeriesData(df=merged_df)
-        return merged_ts
+        return TimeSeriesData(df=merged_df)
 
     def add_multi_event(
         self,
@@ -3193,10 +3188,7 @@ class TestProphetDetector(TestCase):
         events12_ts = self.merge_ts(event1_ts, event2_ts)
         event_ts = self.merge_ts(events12_ts, event3_ts)
 
-        # merge baseline and event ts
-        merged_ts = self.merge_ts(baseline_ts, event_ts)
-
-        return merged_ts
+        return self.merge_ts(baseline_ts, event_ts)
 
     def calc_stds(self, predicted_val, upper_bound, lower_bound):
         actual_upper_std = (50 ** 0.5) * (upper_bound - predicted_val) / 0.8

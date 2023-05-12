@@ -148,8 +148,7 @@ class KatsEnsemble:
 
         detector = ACFDetector(data)
         detector.detector()
-        seasonality = detector.seasonality_detected
-        return seasonality
+        return detector.seasonality_detected
 
     @staticmethod
     def deseasonalize(data: TimeSeriesData, decomposition_method: str) -> Tuple[TimeSeriesData, TimeSeriesData]:
@@ -215,19 +214,18 @@ class KatsEnsemble:
                 ):
                     # check consistency of time being index
                     if "time" in desea_pred.columns:
-                        msg = "Setting time column as index"
-                        logging.info(msg)
+                        logging.info("Setting time column as index")
                         desea_pred.set_index("time", inplace=True)
 
                     # native C.I calculated from individual model
                     predicted[model_name] = desea_pred + \
-                        np.tile(
+                            np.tile(
                             np.tile(seasonality_unit, rep)[:steps], [3, 1]
                     ).transpose()
                 else:
                     # no C.I from individual model
                     tmp_fcst = desea_pred.fcst\
-                        + np.tile(seasonality_unit, rep)[:steps]
+                            + np.tile(seasonality_unit, rep)[:steps]
                     predicted[model_name] = pd.DataFrame({
                         "time": desea_pred.index,
                         "fcst": tmp_fcst,
@@ -235,33 +233,31 @@ class KatsEnsemble:
                         "fcst_upper": np.nan,
                     }).set_index("time")
 
-            else:
-                # multiplicative, element-wise multiply
-                if (
+            elif (
                     "fcst_lower" in desea_pred.columns
                     and "fcst_upper" in desea_pred.columns
                 ):
-                    # check consistency of time being index
-                    if "time" in desea_pred.columns:
-                        msg = "Setting time column as index"
-                        logging.info(msg)
-                        desea_pred.set_index("time", inplace=True)
+                # check consistency of time being index
+                if "time" in desea_pred.columns:
+                    msg = "Setting time column as index"
+                    logging.info(msg)
+                    desea_pred.set_index("time", inplace=True)
 
-                    # native C.I calculated from individual model
-                    predicted[model_name] = desea_pred * \
+                # native C.I calculated from individual model
+                predicted[model_name] = desea_pred * \
                         np.tile(
-                            np.tile(seasonality_unit, rep)[:steps], [3, 1]
-                    ).transpose()
-                else:
-                    # no C.I from individual model
-                    tmp_fcst = desea_pred.fcst * \
+                        np.tile(seasonality_unit, rep)[:steps], [3, 1]
+                ).transpose()
+            else:
+                # no C.I from individual model
+                tmp_fcst = desea_pred.fcst * \
                         np.tile(seasonality_unit, rep)[:steps]
-                    predicted[model_name] = pd.DataFrame({
-                        "time": desea_pred.index,
-                        "fcst": tmp_fcst,
-                        "fcst_lower": 0,
-                        "fcst_upper": 0,
-                    }).set_index("time")
+                predicted[model_name] = pd.DataFrame({
+                    "time": desea_pred.index,
+                    "fcst": tmp_fcst,
+                    "fcst_lower": 0,
+                    "fcst_upper": 0,
+                }).set_index("time")
 
         return predicted
 
@@ -291,20 +287,21 @@ class KatsEnsemble:
 
         # Fit individual model with given data
         num_process = min(len(MODELS), (cpu_count() - 1) // 2)
-        if num_process < 1:
-            num_process = 1
+        num_process = max(num_process, 1)
         # pyre-fixme[16]: `SyncManager` has no attribute `Pool`.
         pool = multiprocessing.Manager().Pool(processes=(num_process), maxtasksperchild=1000)
 
-        fitted_models = {}
-        for model in models.models:
-            fitted_models[model.model_name] = pool.apply_async(
+        fitted_models = {
+            model.model_name: pool.apply_async(
                 self._fit_single,
                 args=(
                     data,
                     MODELS[model.model_name.split("_")[0].lower()],
-                    model.model_params),
+                    model.model_params,
+                ),
             )
+            for model in models.models
+        }
         pool.close()
         pool.join()
         fitted = {model: res.get() for model, res in fitted_models.items()}
@@ -328,7 +325,7 @@ class KatsEnsemble:
             raise _logged_error(msg)
 
         # set up auto backtesting flag
-        auto_backtesting = False if self.params["aggregation"] == "median" else True
+        auto_backtesting = self.params["aggregation"] != "median"
 
         # check fitExecutor
         if "fitExecutor" not in self.params.keys():
@@ -409,7 +406,6 @@ class KatsEnsemble:
             }
 
             predicted.update(extra_predict)
-            self.predicted = predicted
         else:
             predicted = {
                 k: v.predict(self.steps).set_index("time")
@@ -427,7 +423,7 @@ class KatsEnsemble:
                     tmp_v["fcst_lower"] = np.nan
                     tmp_v["fcst_upper"] = np.nan
                     predicted[k] = tmp_v
-            self.predicted = predicted
+        self.predicted = predicted
         return self
 
     def forecast(self, steps: int) -> Tuple[Dict[str, pd.DataFrame], Optional[Dict[str, float]]]:
@@ -453,7 +449,7 @@ class KatsEnsemble:
             raise _logged_error(msg)
 
         # set up auto backtesting flag
-        auto_backtesting = False if self.params["aggregation"] == "median" else True
+        auto_backtesting = self.params["aggregation"] != "median"
 
         if self.seasonality:
             # call forecastExecutor and move to next steps
@@ -574,29 +570,29 @@ class KatsEnsemble:
 
         # Fit individual model with given data
         num_process = min(len(MODELS), (cpu_count() - 1) // 2)
-        if num_process < 1:
-            num_process = 1
+        num_process = max(num_process, 1)
         # pyre-fixme[16]: `SyncManager` has no attribute `Pool`.
         pool = multiprocessing.Manager().Pool(processes=(num_process), maxtasksperchild=1000)
 
-        fitted_models = {}
-        for model in models.models:
-            fitted_models[model.model_name] = pool.apply_async(
+        fitted_models = {
+            model.model_name: pool.apply_async(
                 self._fit_single,
                 args=(
                     data,
                     MODELS[model.model_name.split("_")[0].lower()],
-                    model.model_params),
+                    model.model_params,
+                ),
             )
+            for model in models.models
+        }
         pool.close()
         pool.join()
         fitted = {model: res.get() for model, res in fitted_models.items()}
 
-        # simply predict with given steps
-        predicted = {}
-        for model_name, model_fitted in fitted.items():
-            predicted[model_name] = model_fitted.predict(steps).set_index("time")
-
+        predicted = {
+            model_name: model_fitted.predict(steps).set_index("time")
+            for model_name, model_fitted in fitted.items()
+        }
         # if auto back testing
         self.model_params = models  # used by _backtester_all
         if should_auto_backtest:
@@ -770,20 +766,20 @@ class KatsEnsemble:
             raise _logged_error("fit must be called before backtesting.")
 
         num_process = min(len(MODELS.keys()), (cpu_count() - 1) // 2)
-        if num_process < 1:
-            num_process = 1
+        num_process = max(num_process, 1)
         # pyre-fixme[16]: `SyncManager` has no attribute `Pool`.
         pool = multiprocessing.Manager().Pool(processes=(num_process), maxtasksperchild=1000)
-        backtesters = {}
-        for model in model_params.models:
-            backtesters[model.model_name] = pool.apply_async(
+        backtesters = {
+            model.model_name: pool.apply_async(
                 self._backtester_single,
                 args=(
                     model.model_params,
-                    MODELS[model.model_name.split("_")[0].lower()]
+                    MODELS[model.model_name.split("_")[0].lower()],
                 ),
                 kwds={"err_method": err_method},
             )
+            for model in model_params.models
+        }
         pool.close()
         pool.join()
         self.errors = errors = {model: res.get() for model, res in backtesters.items()}

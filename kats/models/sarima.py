@@ -94,7 +94,6 @@ class SARIMAParams(Params):
         """Not implemented."""
 
         logging.info("Method validate_params() is not implemented.")
-        pass
 
 
 class SARIMAModel(m.Model):
@@ -325,9 +324,9 @@ class SARIMAModel(m.Model):
             # k = max(p, d, q) + max(P, D, Q) * seasonal_order + 1
             k = (
                 max(self.params.p, self.params.d, self.params.q)
-                + max(self.params.seasonal_order[0:3]) * self.params.seasonal_order[3]
-                + 1
-            )
+                + max(self.params.seasonal_order[:3])
+                * self.params.seasonal_order[3]
+            ) + 1
 
             self.fcst_df.loc[0:k, ["fcst", "fcst_lower", "fcst_upper"]] = np.nan
         else:

@@ -251,15 +251,9 @@ class StatSigDetectorModel(DetectorModel):
 
         end_time = data.time.iloc[-1]
 
-        if end_time < (
-            start_time
-            + pd.Timedelta(
-                value=(self.n_control + self.n_test - 1), unit=self.time_unit
-            )
-        ):
-            return False
-        else:
-            return True
+        return end_time >= start_time + pd.Timedelta(
+            value=(self.n_control + self.n_test - 1), unit=self.time_unit
+        )
 
     def _handle_not_enough_history(
         self, data: TimeSeriesData, historical_data: TimeSeriesData
@@ -381,7 +375,7 @@ class StatSigDetectorModel(DetectorModel):
         )
         control_end_dt = test_start_dt
 
-        return control_start_dt, control_end_dt, test_start_dt, test_end_dt
+        return control_start_dt, control_end_dt, control_end_dt, test_end_dt
 
     def _init_control_test(self, data: TimeSeriesData):
         """

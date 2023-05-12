@@ -239,9 +239,9 @@ class TsFeatures:
                 f2g[f] = k
 
         self._total_feature_len_ = len(f2g.keys())
-        for f in kwargs.keys():
+        for f in kwargs:
             assert (
-                f in f2g.keys() or f in g2f.keys()
+                f in f2g or f in g2f
             ), f"""couldn't find your desired feature/group "{f}", please check spelling"""
 
         # Higher level of features:
@@ -249,20 +249,20 @@ class TsFeatures:
         # for calculation
         if not selected_features:
             default = True
-            self.final_filter = {k: default for k in f2g.keys()}
-        elif selected_features:
+            self.final_filter = {k: default for k in f2g}
+        else:
             default = False
-            self.final_filter = {k: default for k in f2g.keys()}
+            self.final_filter = {k: default for k in f2g}
             for f in selected_features:
                 assert (
-                    f in f2g.keys() or f in g2f.keys()
+                    f in f2g or f in g2f
                 ), f"""couldn't find your desired feature/group "{f}", please check spelling"""
-                if f in g2f.keys():  # the opt-in request is for a feature group
+                if f in g2f:  # the opt-in request is for a feature group
                     kwargs[f] = True
                     for feature in g2f[f]:
                         kwargs[feature] = kwargs.get(feature, True)
                         self.final_filter[feature] = True
-                elif f in f2g.keys():  # the opt-in request is for a certain feature
+                elif f in f2g:  # the opt-in request is for a certain feature
                     assert kwargs.get(
                         f2g[f], True
                     ), f"""feature group: {f2g[f]} has to be opt-in based on your opt-in request of feature: {f}"""
@@ -338,12 +338,9 @@ class TsFeatures:
                 ts_values = x.value[col].values  # extract 1-d numpy array
                 ts_features.append(self._transform_1d(ts_values, x.value[col]))
 
-        # performing final filter
-        to_remove = []
-        for feature in ts_features:
-            if not self.final_filter[feature]:
-                to_remove.append(feature)
-
+        to_remove = [
+            feature for feature in ts_features if not self.final_filter[feature]
+        ]
         for r in to_remove:
             del ts_features[r]
 
@@ -439,11 +436,11 @@ class TsFeatures:
                 "linearity": partial(self.get_linearity),
             }
 
-            _dict_features_ = {}
-            for k, v in dict_features.items():
-                if self.__kwargs__.get(k, self.default):
-                    _dict_features_[k] = v(x)
-
+            _dict_features_ = {
+                k: v(x)
+                for k, v in dict_features.items()
+                if self.__kwargs__.get(k, self.default)
+            }
         # calculate cusum detector features
         dict_cusum_detector_features = {}
         if self.cusum_detector:
@@ -765,7 +762,7 @@ class TsFeatures:
             return np.nan
 
         max_run_length = 0
-        window_size = int(len(x) / nbins)
+        window_size = len(x) // nbins
         for i in range(0, len(x), window_size):
             run_length = np.max(
                 [len(list(v)) for k, v in groupby(x[i : i + window_size])]
@@ -1041,8 +1038,7 @@ class TsFeatures:
             The standard deviation of the first derivative of the time series.
         """
 
-        std1st_der = np.std(np.gradient(x))
-        return std1st_der
+        return np.std(np.gradient(x))
 
     # crossing points
     @staticmethod
@@ -1060,11 +1056,11 @@ class TsFeatures:
         """
 
         median = np.median(x)
-        cp = 0
-        for i in range(len(x) - 1):
-            if x[i] <= median < x[i + 1] or x[i] >= median > x[i + 1]:
-                cp += 1
-        return cp
+        return sum(
+            1
+            for i in range(len(x) - 1)
+            if x[i] <= median < x[i + 1] or x[i] >= median > x[i + 1]
+        )
 
     # binarize mean
     @staticmethod
@@ -1233,7 +1229,7 @@ class TsFeatures:
                 statsmodels_ver = float(re.findall('([0-9]+\\.[0-9]+)\\..*', statsmodels.__version__)[0])
                 if statsmodels_ver < 0.12:
                     holt_params_features["holt_beta"] = m.params["smoothing_slope"]
-                elif statsmodels_ver >= 0.12:
+                else:
                     holt_params_features["holt_beta"] = m.params["smoothing_trend"]
             return holt_params_features
         except Exception:
@@ -1278,14 +1274,14 @@ class TsFeatures:
                 _args_["use_boxcox"] = True
                 _args_["initialization_method"] = 'estimated'
                 m = ExponentialSmoothing(x, **_args_).fit()
-            elif statsmodels_ver < 0.12:
+            else:
                 m = ExponentialSmoothing(x, **_args_).fit(use_boxcox = True)
             if extra_args is not None and extra_args.get("hw_alpha", default_status):
                 hw_params_features["hw_alpha"] = m.params["smoothing_level"]
             if extra_args is not None and extra_args.get("hw_beta", default_status):
                 if statsmodels_ver < 0.12:
                     hw_params_features["hw_beta"] = m.params["smoothing_slope"]
-                elif statsmodels_ver >= 0.12:
+                else:
                     hw_params_features["hw_beta"] = m.params["smoothing_trend"]
             if extra_args is not None and extra_args.get("hw_gamma", default_status):
                 hw_params_features["hw_gamma"] = m.params["smoothing_seasonal"]
@@ -1689,7 +1685,6 @@ class TsFeatures:
             Momentum (MOM) time series, (4) Mean of LAG time series, (5) Means of MACD, MACDsign,
             and MACDdiff from Kats Nowcasting.
         """
-        nowcasting_features = {}
         features = [
             "nowcast_roc",
             "nowcast_mom",
@@ -1699,10 +1694,11 @@ class TsFeatures:
             "nowcast_macdsign",
             "nowcast_macddiff",
         ]
-        for feature in features:
-            if extra_args is not None and extra_args.get(feature, default_status):
-                nowcasting_features[feature] = np.nan
-
+        nowcasting_features = {
+            feature: np.nan
+            for feature in features
+            if extra_args is not None and extra_args.get(feature, default_status)
+        }
         try:
             _features = TsFeatures._get_nowcasting_np(x, window, n_fast, n_slow, extra_args, default_status)
             for idx, feature in enumerate(features):
@@ -1758,7 +1754,7 @@ class TsFeatures:
 
             if detected["seasonality_presence"]:
                 _period = int(np.min(detected["seasonalities"]))
-            elif not detected["seasonality_presence"]:
+            else:
                 _period = 7
             res = STL(ts.value.values, period=_period).fit()
 

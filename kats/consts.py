@@ -231,17 +231,10 @@ class TimeSeriesData:
                 self._value = df[[x for x in df.columns if x != self.time_col_name]]
                 self._set_univariate_values_to_series()
 
-        # If separate objects are passed
         elif time is not None and value is not None:
             if not (
-                (
-                    isinstance(time, pd.core.series.Series)
-                    or isinstance(time, pd.DatetimeIndex)
-                )
-                and (
-                    isinstance(value, pd.core.series.Series)
-                    or isinstance(value, pd.DataFrame)
-                )
+                (isinstance(time, (pd.core.series.Series, pd.DatetimeIndex)))
+                and (isinstance(value, (pd.core.series.Series, pd.DataFrame)))
             ):
                 msg = (
                     f"Invalid types: time is {type(time)} when it must be a "
@@ -288,13 +281,11 @@ class TimeSeriesData:
                     ).reset_index(drop=True),
                 )
 
-        # If None is passed
         elif not time and not value:
             self._time = pd.Series([], name=time_col_name)
             self._value = pd.Series([], name=DEFAULT_VALUE_NAME)
             logging.warning("Initializing empty TimeSeriesData object")
 
-        # Error if only one of time or value is None
         else:
             msg = "One of time or value is empty while the other is not"
             raise _log_error(msg)
@@ -474,54 +465,53 @@ class TimeSeriesData:
         """Parses time format when initializing :class:`TimeSeriesData`."""
 
         # Checking if time column is of type pandas datetime
-        if not is_datetime(series):
-            # If we should use unix time
-            if use_unix_time:
-                try:
-                    if tz:
-                        return (
-                            pd.to_datetime(
-                                series.values, unit=unix_time_units, utc=True
-                            )
-                            .tz_convert(tz)
-                            .to_series()
-                            .reset_index(drop=True)
-                        )
-                    else:
-                        return pd.to_datetime(series, unit=unix_time_units)
-                except ValueError:
-                    logging.error("Failed to parse unix time")
-                    logging.debug(
-                        "Could not parse time column "
-                        + f"{list(series)} using unix units "
-                        + f"{unix_time_units}"
-                    )
-                    raise ValueError("Unable to parse unix time")
-            # Otherwise try to parse string
-            else:
-                try:
-                    if tz:
-                        return (
-                            pd.to_datetime(series.values, format=date_format)
-                            .tz_localize(
-                                tz, ambiguous=tz_ambiguous, nonexistent=tz_nonexistent
-                            )
-                            .to_series()
-                            .reset_index(drop=True)
-                        )
-                    else:
-                        return pd.to_datetime(series, format=date_format)
-                except ValueError:
-                    logging.error("Failed to parse time")
-                    logging.debug(
-                        "Could not parse time column "
-                        + f"{list(series)} automatically "
-                        + "or by using specified format "
-                        + f"{date_format}"
-                    )
-                    raise ValueError("Unable to parse time with format specified")
-        else:
+        if is_datetime(series):
             return series
+        # If we should use unix time
+        if use_unix_time:
+            try:
+                if tz:
+                    return (
+                        pd.to_datetime(
+                            series.values, unit=unix_time_units, utc=True
+                        )
+                        .tz_convert(tz)
+                        .to_series()
+                        .reset_index(drop=True)
+                    )
+                else:
+                    return pd.to_datetime(series, unit=unix_time_units)
+            except ValueError:
+                logging.error("Failed to parse unix time")
+                logging.debug(
+                    "Could not parse time column "
+                    + f"{list(series)} using unix units "
+                    + f"{unix_time_units}"
+                )
+                raise ValueError("Unable to parse unix time")
+        # Otherwise try to parse string
+        else:
+            try:
+                if tz:
+                    return (
+                        pd.to_datetime(series.values, format=date_format)
+                        .tz_localize(
+                            tz, ambiguous=tz_ambiguous, nonexistent=tz_nonexistent
+                        )
+                        .to_series()
+                        .reset_index(drop=True)
+                    )
+                else:
+                    return pd.to_datetime(series, format=date_format)
+            except ValueError:
+                logging.error("Failed to parse time")
+                logging.debug(
+                    "Could not parse time column "
+                    + f"{list(series)} automatically "
+                    + "or by using specified format "
+                    + f"{date_format}"
+                )
+                raise ValueError("Unable to parse time with format specified")
 
     def extend(self, other: object, validate: bool = True) -> None:
         """
@@ -598,16 +588,16 @@ class TimeSeriesData:
 
     def _calc_min_max_values(self):
         # Get maximum and minimum values
-        if not self.value.empty:
-            if isinstance(self.value, pd.core.series.Series):
-                self._min = np.nanmin(self.value.values)
-                self._max = np.nanmax(self.value.values)
-            else:
-                self._min = self.value.min(skipna=True)
-                self._max = self.value.max(skipna=True)
-        else:
+        if self.value.empty:
             self._min = np.nan
             self._max = np.nan
+
+        elif isinstance(self.value, pd.core.series.Series):
+            self._min = np.nanmin(self.value.values)
+            self._max = np.nanmax(self.value.values)
+        else:
+            self._min = self.value.min(skipna=True)
+            self._max = self.value.max(skipna=True)
 
     def is_data_missing(self) -> bool:
         """
@@ -625,10 +615,7 @@ class TimeSeriesData:
         if len(self.time) < 3:
             return False
 
-        if pd.infer_freq(self.time_to_index()) is None:
-            return True
-        else:
-            return False
+        return pd.infer_freq(self.time_to_index()) is None
 
     def freq_to_timedelta(self):
         """
@@ -705,7 +692,7 @@ class TimeSeriesData:
         return self.to_dataframe().to_numpy()
 
     def _get_binary_op_other_arg(self, other: object) -> TimeSeriesData:
-        if isinstance(other, float) or isinstance(other, int):
+        if isinstance(other, (float, int)):
             if isinstance(self.value, pd.Series):
                 return TimeSeriesData(
                     pd.DataFrame(
@@ -798,9 +785,7 @@ class TimeSeriesData:
             df[self.time_col_name].diff().value_counts().sort_values(ascending=False)
         )
 
-        frequency = freq_counts.index[0]
-
-        return frequency
+        return freq_counts.index[0]
 
     def interpolate(
         self,
@@ -915,16 +900,15 @@ class TimeSeriesIterator:
         return self
 
     def __next__(self):
-        if self.start < self.ts.value.shape[1]:
-            x = pd.DataFrame(
-                list(self.ts.value.iloc[:, self.start]),
-                index=list(self.ts.time),
-                columns=["y"],
-            )
-            self.start += 1
-            return x
-        else:
+        if self.start >= self.ts.value.shape[1]:
             raise StopIteration
+        x = pd.DataFrame(
+            list(self.ts.value.iloc[:, self.start]),
+            index=list(self.ts.time),
+            columns=["y"],
+        )
+        self.start += 1
+        return x
 
 
 class TSIterator:
@@ -946,21 +930,21 @@ class TSIterator:
         return self
 
     def __next__(self) -> TimeSeriesData:
-        if self.curr < len(self.ts.time):
-            if self.ts.is_univariate():
-                ret = TimeSeriesData(
-                    time=pd.Series(self.ts.time[self.curr]),
-                    value=pd.Series(self.ts.value.iloc[self.curr]),
-                )
-            else:
-                ret = TimeSeriesData(
-                    time=pd.Series(self.ts.time[self.curr]),
-                    value=pd.DataFrame(self.ts.value.iloc[self.curr]),
-                )
-            self.curr += 1
-            return ret
-        else:
+        if self.curr >= len(self.ts.time):
             raise StopIteration
+        ret = (
+            TimeSeriesData(
+                time=pd.Series(self.ts.time[self.curr]),
+                value=pd.Series(self.ts.value.iloc[self.curr]),
+            )
+            if self.ts.is_univariate()
+            else TimeSeriesData(
+                time=pd.Series(self.ts.time[self.curr]),
+                value=pd.DataFrame(self.ts.value.iloc[self.curr]),
+            )
+        )
+        self.curr += 1
+        return ret
 
 
 class Params:
